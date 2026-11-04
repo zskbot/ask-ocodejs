@@ -4,10 +4,12 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { AUTH_ENV, LINK_ENV, isValidCallbackUrl, safeUrl, sanitizeUrl } from "./auth-links-core.js";
+import { verifyProviderToken } from "./auth-token-verifier.js";
 
 const server = new Server({ name: "ocodejs-auth-integration", version: "1.0.1" }, { capabilities: { tools: {} } });
 const tools = [
   { name: "auth_configuration_status", description: "Inspect Firebase, GitHub OAuth, and Google OAuth configuration without returning secret values. Reports callback URL format separately from provider-console verification.", inputSchema: { type: "object", properties: {}, additionalProperties: false } },
+  { name: "verify_provider_token", description: "Verify a Firebase ID token, GitHub access token, or Google access/ID token directly with its provider. Never logs or returns the supplied token; returns minimal identity and validity metadata.", inputSchema: { type: "object", properties: { provider: { type: "string", enum: ["firebase", "github", "google"] }, token: { type: "string", minLength: 1, maxLength: 16384 }, tokenType: { type: "string", enum: ["id_token", "access_token"] } }, required: ["provider", "token"], additionalProperties: false } },
   { name: "project_integration_links", description: "List configured OCodeJS application, docs, API, MCP, and GitHub links. Sensitive query strings and URL credentials are never returned.", inputSchema: { type: "object", properties: {}, additionalProperties: false } },
   { name: "verify_project_links", description: "Check configured OCodeJS HTTPS service links. Only checks named OCODEJS_*_URL environment variables; redirects are revalidated and private IP literals are blocked.", inputSchema: { type: "object", properties: { links: { type: "array", items: { type: "string", enum: Object.keys(LINK_ENV) }, description: "Optional link keys to check; defaults to all configured links." } }, additionalProperties: false } },
 ];
@@ -16,8 +18,8 @@ async function firebaseConfig() {
   try {
     const file = new URL("../../firebase-applet-config.json", import.meta.url);
     const config = JSON.parse(await readFile(file, "utf8"));
-    return { present: Boolean(config.projectId && config.authDomain && config.apiKey), projectId: config.projectId || null, authDomain: config.authDomain || null, apiKeyPresent: Boolean(config.apiKey) };
-  } catch { return { present: false, projectId: null, authDomain: null, apiKeyPresent: false }; }
+    return { present: Boolean(config.projectId && config.authDomain && config.apiKey), projectId: config.projectId || null, authDomain: config.authDomain || null, apiKeyPresent: Boolean(config.apiKey), apiKey: config.apiKey || null };
+  } catch { return { present: false, projectId: null, authDomain: null, apiKeyPresent: false, apiKey: null }; }
 }
 function getLinks() {
   return Object.fromEntries(Object.entries(LINK_ENV).map(([key, env]) => [key, process.env[env]?.trim() || null]));
@@ -61,6 +63,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args = {} } = request.params;
   let result;
   if (name === "auth_configuration_status") result = await authStatus();
+  else if (name === "verify_provider_token") {
+    const firebase = args.provider === "firebase" ? await firebaseConfig() : null;
+    try {
+      result = await verifyProviderToken({ provider: args.provider, token: args.token, tokenType: args.tokenType, firebaseApiKey: firebase?.apiKey, googleClientId: process.env.GOOGLE_CLIENT_ID });
+    } catch {
+      result = { valid: false, provider: args.provider, reason: "verification_service_unavailable" };
+    }
+  }
   else if (name === "project_integration_links") {
     result = Object.fromEntries(Object.entries(getLinks()).map(([key, url]) => [key, url ? { configured: true, url: sanitizeUrl(url), validHttps: Boolean(safeUrl(url)) } : { configured: false, url: null }]));
   } else if (name === "verify_project_links") {
