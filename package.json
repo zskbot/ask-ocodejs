@@ -17,7 +17,8 @@
     "format": "prettier . --write",
     "auth": "node src/index.js",
     "index": "node -e \"import('./src/rag/index.js').then(m=>m.indexRepo())\"",
-    "mcp:auth": "node src/mcp/auth-links-server.js"
+    "mcp:auth": "node src/mcp/auth-links-server.js",
+    "test:mcp": "vitest run src/mcp/auth-links-core.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
