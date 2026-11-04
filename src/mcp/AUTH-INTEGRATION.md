@@ -9,11 +9,13 @@ npm install
 npm run mcp:auth
 ```
 
+The server loads local `.env` values through dotenv. In hosted MCP clients, configure variables through the host's secret manager instead.
+
 ## MCP tools
 
-- `auth_configuration_status` — reports presence of Firebase client/admin, GitHub OAuth, and Google OAuth configuration. It does not expose values or claim provider-console enablement.
-- `project_integration_links` — lists configured app, docs, API, MCP, and GitHub URLs.
-- `verify_project_links` — checks configured public HTTPS service URLs. Local/private targets are blocked and redirects are revalidated.
+- `auth_configuration_status` — reports Firebase client/admin configuration presence, GitHub and Google OAuth variable presence, and whether callback URLs use valid public HTTPS URLs. It does not expose secret values or claim provider-console enablement.
+- `project_integration_links` — lists configured app, docs, API, MCP, and GitHub URLs. Query strings and URL credentials are stripped from displayed links.
+- `verify_project_links` — checks configured public HTTPS service URLs. Local/private IP literals are blocked, redirects are revalidated, and requests time out after seven seconds.
 
 The existing `npm run mcp` Git MCP remains unchanged.
 
@@ -36,10 +38,11 @@ Set values in the MCP host's secret/environment manager, not in source control:
 | `OCODEJS_MCP_URL` | MCP endpoint URL |
 | `OCODEJS_GITHUB_URL` | GitHub project URL |
 
-## Verification boundaries
+## Verification boundaries and security
 
-- Reports configuration presence only; never returns secret values.
-- Firebase web config is read from the existing public client config. Admin credentials remain server-side.
-- URL checks are limited to configured environment URLs, HTTPS only, and public destinations. Redirects are revalidated.
-- OAuth callback URLs are checked for presence only; no OAuth flow is triggered.
-- Provider enablement and callback registration must still be verified in Firebase, GitHub, and Google consoles.
+- Reports configuration presence and URL syntax only; never returns secret values.
+- Firebase web config is read from the existing public client config. Firebase Admin credentials remain server-side.
+- URL checks only inspect operator-configured environment URLs. Do not expose this tool to untrusted callers without adding caller authentication, rate limiting, DNS/IP pinning, and an explicit host allowlist.
+- URL validation rejects non-HTTPS schemes, URL credentials, local hostnames, and non-public IP literals. Redirect targets are revalidated.
+- OAuth callback URL presence/format does not prove provider registration or successful sign-in. Firebase, GitHub, and Google provider enablement must still be checked in their consoles.
+- This package is a local STDIO MCP server, not a remotely hosted HTTPS MCP endpoint.
