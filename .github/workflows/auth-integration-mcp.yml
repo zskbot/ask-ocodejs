@@ -9,7 +9,7 @@ on:
       - "package-lock.json"
       - ".github/workflows/auth-integration-mcp.yml"
   push:
-    branches: [main]
+    branches: ["**"]
     paths:
       - "src/mcp/**"
       - "package.json"
