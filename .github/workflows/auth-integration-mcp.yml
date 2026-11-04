@@ -1,0 +1,43 @@
+name: Auth Integration MCP CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/mcp/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/auth-integration-mcp.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/mcp/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/auth-integration-mcp.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: auth-integration-mcp-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Syntax check
+        run: node --check src/mcp/auth-links-server.js && node --check src/mcp/auth-links-core.js
+      - name: MCP URL security tests
+        run: npm run test:mcp
