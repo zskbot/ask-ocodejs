@@ -32,7 +32,8 @@ function isPublicIp(hostname) {
     if (a === 169 && b === 254) return false;
     if (a === 172 && b >= 16 && b <= 31) return false;
     if (a === 192 && (b === 0 || b === 168)) return false;
-    if (a === 198 && (b === 18 || b === 19)) return false;
+    if (a === 198 && (b === 18 || b === 19 || (b === 51 && octets[2] === 100))) return false;
+    if (a === 203 && b === 0 && octets[2] === 113) return false;
     return true;
   }
   // Only global-unicast IPv6 (2000::/3) is accepted. This rejects loopback,
