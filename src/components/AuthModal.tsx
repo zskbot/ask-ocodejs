@@ -27,7 +27,7 @@ function profileFromUser(user: typeof auth.currentUser, provider: AuthProviderNa
     username: user.displayName || user.email?.split("@")[0] || "User",
     role: "Authenticated user",
     avatarUrl: user.photoURL || undefined,
-    authProvider: provider === "email" ? "guest" : provider,
+    authProvider: provider,
     email: user.email || undefined,
   };
 }
