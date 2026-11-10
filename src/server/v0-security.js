@@ -36,6 +36,7 @@ export async function authenticateFirebaseRequest(req, env = process.env) {
     return {
       uid: payload.sub,
       email: typeof payload.email === "string" ? payload.email : undefined,
+      emailVerified: payload.email_verified === true,
     };
   } catch (error) {
     if (error instanceof V0HttpError) throw error;
@@ -52,7 +53,7 @@ export function authorizeV0User(user, env = process.env) {
   if (!allowedEmails.length && !allowedUids.length) {
     throw new V0HttpError(503, "V0_ACCESS_NOT_CONFIGURED", "v0 Builder đang khóa. Chủ dự án cần cấu hình V0_ALLOWED_EMAILS hoặc V0_ALLOWED_UIDS.");
   }
-  const emailAllowed = user.email && allowedEmails.includes(user.email.toLowerCase());
+  const emailAllowed = user.emailVerified === true && user.email && allowedEmails.includes(user.email.toLowerCase());
   const uidAllowed = allowedUids.includes(user.uid);
   if (!emailAllowed && !uidAllowed) {
     throw new V0HttpError(403, "V0_ACCESS_DENIED", "Tài khoản này chưa được cấp quyền sử dụng v0 Builder.");
