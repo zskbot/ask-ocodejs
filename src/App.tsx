@@ -273,7 +273,7 @@ export default function App() {
     setSessions(prev => [newSession, ...prev]);
   };
 
-  const [selectedModel, setSelectedModel] = useState<'zsk' | 'ohmaba' | 'openai' | 'gemini' | 'qwen' | 'claude' | 'v0'>('zsk');
+  const [selectedModel, setSelectedModel] = useState<string>('zsk');
 
   return (
     <div className="flex flex-col h-screen w-screen bg-black text-white font-sans overflow-hidden">
