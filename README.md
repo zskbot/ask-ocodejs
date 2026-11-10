@@ -127,6 +127,7 @@ Vite prints the local development URL when it starts. Keep the API process runni
 | `DEFAULT_MODEL` | Default provider/model alias used by API routing |
 | `OHMABA_URL` | Optional custom or self-hosted agent endpoint |
 | `OHMABA_API_KEY` | Optional bearer token for the custom endpoint |
+| `FIREBASE_PROJECT_ID` | Firebase Authentication project ID used by the API token verifier |
 | `V0_API_KEY` | Server-only v0 Platform API key; never expose with a VITE_ prefix |
 | `V0_ALLOWED_EMAILS` / `V0_ALLOWED_UIDS` | Explicit allow-list for paid v0 access |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Required shared rate limiter in production and Preview |
