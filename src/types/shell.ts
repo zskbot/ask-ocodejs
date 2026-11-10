@@ -58,7 +58,7 @@ export interface UserProfile {
   username: string;
   role: string;
   avatarUrl?: string;
-  authProvider: 'github' | 'google' | 'gitlab' | 'guest';
+  authProvider: 'github' | 'google' | 'email' | 'gitlab' | 'guest';
   is2FAEnabled: boolean;
   repoConnected?: string;
   email?: string;
