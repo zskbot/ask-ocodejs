@@ -174,7 +174,7 @@ export default function App() {
       return;
     }
     const providerId = firebaseUser.providerData[0]?.providerId;
-    const authProvider = providerId === 'github.com' ? 'github' : providerId === 'google.com' ? 'google' : 'guest';
+    const authProvider = providerId === 'github.com' ? 'github' : providerId === 'google.com' ? 'google' : providerId === 'password' ? 'email' : 'guest';
     setUser({
       username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
       role: 'Authenticated user',
@@ -273,7 +273,7 @@ export default function App() {
     setSessions(prev => [newSession, ...prev]);
   };
 
-  const [selectedModel, setSelectedModel] = useState<'zsk' | 'ohmaba' | 'openai' | 'gemini' | 'qwen' | 'claude'>('zsk');
+  const [selectedModel, setSelectedModel] = useState<'zsk' | 'ohmaba' | 'openai' | 'gemini' | 'qwen' | 'claude' | 'v0'>('zsk');
 
   return (
     <div className="flex flex-col h-screen w-screen bg-black text-white font-sans overflow-hidden">
