@@ -59,10 +59,11 @@ export default async function handler(req, res) {
       if (!messagesResult.error) {
         const assistantMessage = messagesResult.data?.messages?.find(message => message.role === "assistant");
         const parts = Array.isArray(assistantMessage?.parts) ? assistantMessage.parts : [];
-        const generatedText = [assistantMessage?.content, ...parts.filter(part => part?.type === "text").map(part => part.text)]
-          .filter(value => typeof value === "string" && value.trim())
+        const partsText = parts.filter(part => part?.type === "text" && typeof part.text === "string")
+          .map(part => part.text)
           .join("\\n")
           .trim();
+        const generatedText = partsText || (typeof assistantMessage?.content === "string" ? assistantMessage.content.trim() : "");
         if (generatedText) responseText = generatedText;
       }
     } catch {
