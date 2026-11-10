@@ -69,15 +69,19 @@ describe("v0 authorization and production rate-limit requirements", () => {
 
   it("allows only explicitly listed Firebase emails or UIDs", () => {
     expect(() => authorizeV0User(
-      { uid: "u1", email: "Owner@Example.com" },
+      { uid: "u1", email: "Owner@Example.com", emailVerified: true },
       { V0_ALLOWED_EMAILS: "owner@example.com" },
     )).not.toThrow();
     expect(() => authorizeV0User(
-      { uid: "u2", email: "other@example.com" },
+      { uid: "u2", email: "other@example.com", emailVerified: false },
       { V0_ALLOWED_UIDS: "u2" },
     )).not.toThrow();
     expect(() => authorizeV0User(
-      { uid: "u3", email: "other@example.com" },
+      { uid: "u3", email: "owner@example.com", emailVerified: false },
+      { V0_ALLOWED_EMAILS: "owner@example.com" },
+    )).toThrow("chưa được cấp quyền");
+    expect(() => authorizeV0User(
+      { uid: "u4", email: "other@example.com", emailVerified: true },
       { V0_ALLOWED_EMAILS: "owner@example.com" },
     )).toThrow("chưa được cấp quyền");
   });
