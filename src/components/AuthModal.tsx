@@ -7,6 +7,7 @@ import {
   signInWithPopup,
   signOut,
   updateProfile,
+  sendEmailVerification,
 } from "firebase/auth";
 import { X, Github, Mail, ShieldCheck, AlertCircle, Chrome, LogOut } from "lucide-react";
 import { UserProfile } from "../types/shell";
@@ -84,6 +85,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, user, onU
         : await signInWithEmailAndPassword(auth, email.trim(), password);
       if (mode === "signup") {
         await updateProfile(result.user, { displayName: email.trim().split("@")[0] });
+      }
+      if (!result.user.emailVerified) {
+        await sendEmailVerification(result.user);
+        await signOut(auth);
+        setNotice("Đã gửi email xác minh. Xác minh địa chỉ email rồi đăng nhập lại để sử dụng v0 Builder.");
+        return;
       }
       completeSignIn(result.user, "email");
     } catch (error) {
