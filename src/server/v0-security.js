@@ -46,6 +46,19 @@ export async function authenticateFirebaseRequest(req, env = process.env) {
   }
 }
 
+export function authorizeV0User(user, env = process.env) {
+  const allowedEmails = String(env.V0_ALLOWED_EMAILS || "").split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
+  const allowedUids = String(env.V0_ALLOWED_UIDS || "").split(",").map(value => value.trim()).filter(Boolean);
+  if (!allowedEmails.length && !allowedUids.length) {
+    throw new V0HttpError(503, "V0_ACCESS_NOT_CONFIGURED", "v0 Builder đang khóa. Chủ dự án cần cấu hình V0_ALLOWED_EMAILS hoặc V0_ALLOWED_UIDS.");
+  }
+  const emailAllowed = user.email && allowedEmails.includes(user.email.toLowerCase());
+  const uidAllowed = allowedUids.includes(user.uid);
+  if (!emailAllowed && !uidAllowed) {
+    throw new V0HttpError(403, "V0_ACCESS_DENIED", "Tài khoản này chưa được cấp quyền sử dụng v0 Builder.");
+  }
+}
+
 function tokenSignature(payload, secret) {
   return createHmac("sha256", secret).update(payload).digest("base64url");
 }
@@ -92,6 +105,46 @@ export function consumeV0RateLimit(key, { max, windowMs = 60_000, now = Date.now
     remaining: Math.max(0, max - bucket.count),
     retryAfter: allowed ? 0 : Math.max(1, Math.ceil((bucket.startedAt + windowMs - now) / 1000)),
   };
+}
+
+export async function enforceV0RateLimit(key, { max, windowSeconds = 60, env = process.env } = {}) {
+  const redisUrl = String(env.UPSTASH_REDIS_REST_URL || "").trim().replace(/\/$/, "");
+  const redisToken = String(env.UPSTASH_REDIS_REST_TOKEN || "").trim();
+  if (!redisUrl || !redisToken) {
+    if (env.NODE_ENV === "production") {
+      throw new V0HttpError(503, "RATE_LIMIT_NOT_CONFIGURED", "v0 Builder đang khóa cho đến khi cấu hình Upstash Redis rate limiting.");
+    }
+    const local = consumeV0RateLimit(key, { max, windowMs: windowSeconds * 1000 });
+    if (!local.allowed) throw new V0HttpError(429, "RATE_LIMITED", "Đã đạt giới hạn yêu cầu v0. Hãy thử lại sau.");
+    return local;
+  }
+
+  let endpoint;
+  try {
+    endpoint = new URL(redisUrl);
+    if (endpoint.protocol !== "https:") throw new Error("Redis REST must use HTTPS");
+  } catch {
+    throw new V0HttpError(503, "RATE_LIMIT_UNAVAILABLE", "Cấu hình Redis rate limiting không hợp lệ.");
+  }
+
+  try {
+    const script = "local n=redis.call('INCR',KEYS[1]); if n==1 then redis.call('EXPIRE',KEYS[1],ARGV[1]); end; return n";
+    const response = await fetch(`${endpoint.origin}/pipeline`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${redisToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify([["EVAL", script, "1", key, String(windowSeconds)]]),
+      signal: AbortSignal.timeout(2500),
+    });
+    if (!response.ok) throw new Error("Redis rate-limit request failed");
+    const result = await response.json();
+    const count = Number(result?.[0]?.result);
+    if (!Number.isSafeInteger(count) || count < 1) throw new Error("Invalid Redis rate-limit response");
+    if (count > max) throw new V0HttpError(429, "RATE_LIMITED", "Đã đạt giới hạn yêu cầu v0. Hãy thử lại sau.");
+    return { allowed: true, remaining: Math.max(0, max - count), retryAfter: 0 };
+  } catch (error) {
+    if (error instanceof V0HttpError) throw error;
+    throw new V0HttpError(503, "RATE_LIMIT_UNAVAILABLE", "Không thể kiểm tra giới hạn sử dụng v0. Hãy thử lại sau.");
+  }
 }
 
 export function resetV0RateLimitsForTests() {
