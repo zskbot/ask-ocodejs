@@ -33,6 +33,7 @@ Ask OCode.js is an AI-agent web application built around a simple idea: make it 
 - [Project layout](#project-layout)
 - [Development checks](#development-checks)
 - [Security](#security)
+- [v0 Builder security](docs/v0-builder-security.md)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -126,6 +127,9 @@ Vite prints the local development URL when it starts. Keep the API process runni
 | `DEFAULT_MODEL` | Default provider/model alias used by API routing |
 | `OHMABA_URL` | Optional custom or self-hosted agent endpoint |
 | `OHMABA_API_KEY` | Optional bearer token for the custom endpoint |
+| `V0_API_KEY` | Server-only v0 Platform API key; never expose with a VITE_ prefix |
+| `V0_ALLOWED_EMAILS` / `V0_ALLOWED_UIDS` | Explicit allow-list for paid v0 access |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Required shared rate limiter in production and Preview |
 | `PORT` | API server port; defaults to `3000` |
 
 Only configure the variables needed by your chosen provider. Do not commit `.env`, credentials, access tokens, or deployment secrets.
@@ -205,6 +209,8 @@ npm run lint
 These commands are available in `package.json`. Run them after making changes and resolve failures before opening a pull request.
 
 ## Security
+
+The v0 Builder integration requires Firebase authentication, an explicit user allow-list, and shared Upstash Redis rate limiting. See [v0 Builder security](docs/v0-builder-security.md) for the Preview-first setup and access policy.
 
 - Keep API keys and tokens in local environment files or hosting-provider secret settings.
 - Rotate a credential immediately if it has been exposed in a commit, log, screenshot, or public issue.
