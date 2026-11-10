@@ -1,7 +1,8 @@
 import { createV0Client } from "v0";
 import {
   authenticateFirebaseRequest,
-  consumeV0RateLimit,
+  authorizeV0User,
+  enforceV0RateLimit,
   verifyV0ChatToken,
   V0HttpError,
 } from "../../../../src/server/v0-security.js";
@@ -31,6 +32,7 @@ export default async function handler(req, res) {
 
   try {
     const user = await authenticateFirebaseRequest(req);
+    authorizeV0User(user);
     const chatId = String(req.query?.chatId || "");
     if (!/^[A-Za-z0-9_-]{1,128}$/.test(chatId)) return sendError(res, 400, "INVALID_CHAT_ID", "Chat ID không hợp lệ.");
 
@@ -39,14 +41,9 @@ export default async function handler(req, res) {
       return sendError(res, 403, "CHAT_ACCESS_DENIED", "Bạn không có quyền truy cập chat này.");
     }
 
-    const uidLimit = consumeV0RateLimit(`message:user:${user.uid}`, { max: 20 });
     const ip = String(req.headers["x-real-ip"] || req.socket?.remoteAddress || "unknown").slice(0, 128);
-    const ipLimit = consumeV0RateLimit(`message:ip:${ip}`, { max: 40 });
-    if (!uidLimit.allowed || !ipLimit.allowed) {
-      const retryAfter = Math.max(uidLimit.retryAfter, ipLimit.retryAfter);
-      res.setHeader("Retry-After", String(retryAfter));
-      return sendError(res, 429, "RATE_LIMITED", "Đã đạt giới hạn gửi tin nhắn v0. Hãy thử lại sau.");
-    }
+    await enforceV0RateLimit(`ocodejs:v0:message:user:${user.uid}`, { max: 20 });
+    await enforceV0RateLimit(`ocodejs:v0:message:ip:${ip}`, { max: 40 });
 
     const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
     if (!message) return sendError(res, 400, "INVALID_PROMPT", "Nhập yêu cầu trước khi gửi.");
@@ -63,7 +60,10 @@ export default async function handler(req, res) {
     if (!response) return sendError(res, 502, "V0_INVALID_RESPONSE", "v0 trả về phản hồi rỗng hoặc không hợp lệ.");
     return res.status(200).json({ success: true, chatId, response });
   } catch (error) {
-    if (error instanceof V0HttpError) return sendError(res, error.status, error.code, error.message);
+    if (error instanceof V0HttpError) {
+      if (error.status === 429) res.setHeader("Retry-After", "60");
+      return sendError(res, error.status, error.code, error.message);
+    }
     console.error("v0 message endpoint failed", { name: error?.name || "Error" });
     return sendError(res, 502, "V0_PROVIDER_FAILED", "Không thể hoàn tất yêu cầu v0. Hãy thử lại sau.");
   }
