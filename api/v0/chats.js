@@ -1,7 +1,8 @@
 import { createV0Client } from "v0";
 import {
   authenticateFirebaseRequest,
-  consumeV0RateLimit,
+  authorizeV0User,
+  enforceV0RateLimit,
   issueV0ChatToken,
   V0HttpError,
 } from "../../src/server/v0-security.js";
@@ -26,14 +27,10 @@ export default async function handler(req, res) {
 
   try {
     const user = await authenticateFirebaseRequest(req);
-    const uidLimit = consumeV0RateLimit(`create:user:${user.uid}`, { max: 5 });
+    authorizeV0User(user);
     const ip = String(req.headers["x-real-ip"] || req.socket?.remoteAddress || "unknown").slice(0, 128);
-    const ipLimit = consumeV0RateLimit(`create:ip:${ip}`, { max: 20 });
-    if (!uidLimit.allowed || !ipLimit.allowed) {
-      const retryAfter = Math.max(uidLimit.retryAfter, ipLimit.retryAfter);
-      res.setHeader("Retry-After", String(retryAfter));
-      return sendError(res, 429, "RATE_LIMITED", "Đã đạt giới hạn tạo v0 chat. Hãy thử lại sau.");
-    }
+    await enforceV0RateLimit(`ocodejs:v0:create:user:${user.uid}`, { max: 5 });
+    await enforceV0RateLimit(`ocodejs:v0:create:ip:${ip}`, { max: 20 });
 
     const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
     if (!message) return sendError(res, 400, "INVALID_PROMPT", "Nhập yêu cầu trước khi gửi.");
@@ -64,7 +61,10 @@ export default async function handler(req, res) {
       webUrl: result.data?.chat?.webUrl,
     });
   } catch (error) {
-    if (error instanceof V0HttpError) return sendError(res, error.status, error.code, error.message);
+    if (error instanceof V0HttpError) {
+      if (error.status === 429) res.setHeader("Retry-After", "60");
+      return sendError(res, error.status, error.code, error.message);
+    }
     console.error("v0 chat endpoint failed", { name: error?.name || "Error" });
     return sendError(res, 502, "V0_PROVIDER_FAILED", "Không thể hoàn tất yêu cầu v0. Hãy thử lại sau.");
   }
