@@ -61,7 +61,7 @@ export default async function handler(req, res) {
         const parts = Array.isArray(assistantMessage?.parts) ? assistantMessage.parts : [];
         const partsText = parts.filter(part => part?.type === "text" && typeof part.text === "string")
           .map(part => part.text)
-          .join("\\n")
+          .join("\n")
           .trim();
         const generatedText = partsText || (typeof assistantMessage?.content === "string" ? assistantMessage.content.trim() : "");
         if (generatedText) responseText = generatedText;
