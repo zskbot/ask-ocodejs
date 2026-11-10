@@ -41,6 +41,8 @@ export default async function handler(req, res) {
       message,
       privacy: "private",
       modelConfiguration: { modelId: "v0-pro", imageGenerations: false },
+      mcpServerIds: [],
+      skills: [],
     });
     if (result.error) {
       console.error("v0 chat creation failed", { status: result.error.status, code: result.error.code });
