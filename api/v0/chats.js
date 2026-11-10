@@ -53,11 +53,26 @@ export default async function handler(req, res) {
     }
 
     const chatToken = issueV0ChatToken({ uid: user.uid, chatId, secret: apiKey });
+    let responseText = "v0 đã nhận yêu cầu và tạo chat riêng tư. Có thể gửi yêu cầu tiếp theo để tiếp tục.";
+    try {
+      const messagesResult = await client.messages.list({ chatId });
+      if (!messagesResult.error) {
+        const assistantMessage = messagesResult.data?.messages?.find(message => message.role === "assistant");
+        const parts = Array.isArray(assistantMessage?.parts) ? assistantMessage.parts : [];
+        const generatedText = [assistantMessage?.content, ...parts.filter(part => part?.type === "text").map(part => part.text)]
+          .filter(value => typeof value === "string" && value.trim())
+          .join("\\n")
+          .trim();
+        if (generatedText) responseText = generatedText;
+      }
+    } catch {
+      // Chat creation succeeded; the first response can be fetched by sending a follow-up.
+    }
     return res.status(201).json({
       success: true,
       chatId,
       chatToken,
-      response: "Đã tạo v0 Builder chat riêng tư. Có thể tiếp tục yêu cầu chỉnh sửa ứng dụng.",
+      response: responseText,
       webUrl: result.data?.chat?.webUrl,
     });
   } catch (error) {
