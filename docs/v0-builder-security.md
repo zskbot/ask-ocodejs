@@ -31,7 +31,7 @@ Add the Ask OCode.js Preview and production domains to Firebase Authentication â
 ## Access policy
 
 - Every v0 request must carry a valid Firebase ID token.
-- The Firebase UID or email must match the explicit v0 allow-list.
+- The Firebase UID or verified email must match the explicit v0 allow-list. Email/password accounts must verify their email first; use the UID allow-list for provider accounts that do not expose a verified email.
 - Every created v0 chat is private.
 - A signed, expiring chat capability binds a chat ID to the Firebase UID that created it. Follow-up messages must present both the Firebase token and this capability.
 - The v0 API key remains in server environment variables and is used only by the server SDK.
