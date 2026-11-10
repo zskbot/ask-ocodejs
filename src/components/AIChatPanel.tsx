@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { requestChat } from '../lib/xbo-chat-client.js';
+import { requestV0Chat } from '../lib/v0-chat-client.js';
 import { PlanChecklist } from './PlanChecklist.tsx';
 import { CodeProposalView } from './CodeProposalView.tsx';
 import { ArrowUp, Bot, Check, CheckCircle2, ChevronDown, Code2, Copy, Github, LayoutDashboard, ListChecks, MessageSquare, Paperclip, PanelLeft, Sparkles, X } from 'lucide-react';
@@ -11,7 +12,8 @@ const MODEL_OPTIONS = [
   { value: 'openai', label: 'OpenAI' },
   { value: 'gemini', label: 'Google Gemini' },
   { value: 'qwen', label: 'Qwen' },
-  { value: 'claude', label: 'Claude' }
+  { value: 'claude', label: 'Claude' },
+  { value: 'v0', label: 'v0 Builder' }
 ];
 
 const STARTER_PROMPTS = [
@@ -59,6 +61,7 @@ export const AIChatPanel: React.FC<AIChatPanelProps> = ({ selectedModel, onSelec
   const [status, setStatus] = useState<{ type: 'info' | 'error'; text: string } | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [copiedMessage, setCopiedMessage] = useState<number | null>(null);
+  const [v0Chat, setV0Chat] = useState<{ chatId: string; chatToken: string } | null>(null);
   const isWelcome = messages.length <= 1;
   const localBuildPlan = createBuildPlan(input);
 
@@ -79,11 +82,22 @@ export const AIChatPanel: React.FC<AIChatPanelProps> = ({ selectedModel, onSelec
       const requestMessage = workspaceMode === 'plan'
         ? `Yêu cầu sản phẩm: ${promptWithAttachment}\n\nHãy lập kế hoạch gồm mục tiêu, giả định, file dự kiến, tác vụ theo thứ tự, kiểm thử, rủi ro/bảo mật và tiêu chí nghiệm thu. Không tuyên bố đã tạo/sửa file và không triển khai production.`
         : promptWithAttachment;
-      const content = await requestChat({
-        message: requestMessage,
-        model: selectedModel,
-        apiBase: import.meta.env.VITE_API_BASE_URL || ''
-      });
+      let content: string;
+      if (selectedModel === 'v0') {
+        const result = await requestV0Chat({
+          message: requestMessage,
+          chat: v0Chat,
+          apiBase: import.meta.env.VITE_API_BASE_URL || '',
+        });
+        setV0Chat(result.chat);
+        content = result.response;
+      } else {
+        content = await requestChat({
+          message: requestMessage,
+          model: selectedModel,
+          apiBase: import.meta.env.VITE_API_BASE_URL || ''
+        });
+      }
       setMessages(prev => [...prev, { role: 'assistant', content, workspaceMode }]);
       setAttachedFile(null);
       setStatus({ type: 'info', text: workspaceMode === 'plan' ? 'Đã nhận kế hoạch đề xuất; chưa sửa file hay triển khai.' : 'Đã nhận phản hồi từ agent.' });
@@ -191,7 +205,7 @@ export const AIChatPanel: React.FC<AIChatPanelProps> = ({ selectedModel, onSelec
                   <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <label className="inline-flex cursor-pointer items-center gap-1.5 border border-white/10 px-3 py-2 text-xs text-neutral-300 transition hover:border-indigo-300/40 hover:text-white" title="Đính kèm tệp văn bản cho agent"><Paperclip size={14} /> <span>Úp file</span><input type="file" className="sr-only" accept=".txt,.md,.mdx,.json,.csv,.tsv,.js,.jsx,.ts,.tsx,.html,.css,.scss,.xml,.yaml,.yml,.toml,.ini,.log,.py,.go,.rs,.java,.sql,.sh,.diff,.patch" onChange={handleFileChange} /></label>
                     {attachedFile && <span className="max-w-[150px] truncate text-xs text-indigo-200" title={attachedFile.name}>{attachedFile.name}<button type="button" onClick={() => setAttachedFile(null)} className="ml-1 inline-flex align-middle" aria-label="Bỏ tệp đính kèm"><X size={12} /></button></span>}
-                    <span className="ocode-prompt-hint hidden sm:inline">⌘/Ctrl + Enter để gửi</span>
+                    <label className="flex items-center gap-2 text-xs text-neutral-400">Provider<select aria-label="AI provider" value={selectedModel} onChange={event => onSelectModel(event.target.value)} className="max-w-[150px] border border-white/10 bg-[#0b0d15] px-2 py-2 text-xs text-white"><option value="zsk">Agents</option><option value="ohmaba">Ohmaba Agent</option><option value="openai">OpenAI</option><option value="gemini">Google Gemini</option><option value="qwen">Qwen</option><option value="claude">Claude</option><option value="v0">v0 Builder</option></select></label><span className="ocode-prompt-hint hidden sm:inline">⌘/Ctrl + Enter</span>
                   </div>
                   <button type="button" onClick={() => void handleSend()} disabled={(!input.trim() && !attachedFile) || isSending}
                     className="ocode-send-button" aria-label={isSending ? 'Đang gửi yêu cầu' : 'Gửi yêu cầu'}>
@@ -214,7 +228,7 @@ export const AIChatPanel: React.FC<AIChatPanelProps> = ({ selectedModel, onSelec
           </main>
         ) : (
           <section aria-live="polite" aria-relevant="additions text" className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-4 px-4 py-6 sm:px-8">
-            <div className="mb-1 flex items-center gap-2 text-xs text-neutral-500"><Sparkles size={14} className="text-neutral-300" /> Ask OCode.js · Agents</div>
+            <div className="mb-1 flex items-center justify-between gap-3 text-xs text-neutral-500"><span className="flex items-center gap-2"><Sparkles size={14} className="text-neutral-300" /> Ask OCode.js · {selectedModel === 'v0' ? 'v0 Builder' : 'Agents'}</span><label className="flex items-center gap-2">Provider<select aria-label="AI provider" value={selectedModel} onChange={event => onSelectModel(event.target.value)} className="border border-white/10 bg-[#0b0d15] px-2 py-2 text-xs text-white"><option value="zsk">Agents</option><option value="ohmaba">Ohmaba Agent</option><option value="openai">OpenAI</option><option value="gemini">Google Gemini</option><option value="qwen">Qwen</option><option value="claude">Claude</option><option value="v0">v0 Builder</option></select></label></div>
             {messages.filter(message => message.role !== 'system').map((message, index) => (
               <article key={`${message.role}-${index}`} className={`max-w-[92%] border p-4 sm:max-w-[85%] ${message.role === 'user' ? 'ml-auto border-indigo-400/20 bg-indigo-400/[0.08]' : 'border-white/10 bg-white/[0.025]'}`}>
                 <div className="mb-2 flex items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-wider text-neutral-500">

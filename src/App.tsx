@@ -4,6 +4,8 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from './lib/firebase-client';
 import { Header } from './components/Header';
 import { SidebarProjectTree } from './components/SidebarProjectTree';
 import { SidebarWatsonAnalysis } from './components/SidebarWatsonAnalysis';
@@ -165,6 +167,24 @@ export default function App() {
 
   const outputEndRef = useRef<HTMLDivElement>(null);
 
+  // Restore the authenticated profile from Firebase; ID tokens are fetched on demand by the v0 client.
+  useEffect(() => onAuthStateChanged(auth, firebaseUser => {
+    if (!firebaseUser) {
+      setUser({ username: 'Guest', role: 'Guest profile', authProvider: 'guest', is2FAEnabled: false });
+      return;
+    }
+    const providerId = firebaseUser.providerData[0]?.providerId;
+    const authProvider = providerId === 'github.com' ? 'github' : providerId === 'google.com' ? 'google' : providerId === 'password' ? 'email' : 'guest';
+    setUser({
+      username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+      role: 'Authenticated user',
+      authProvider,
+      is2FAEnabled: false,
+      avatarUrl: firebaseUser.photoURL || undefined,
+      email: firebaseUser.email || undefined,
+    });
+  }), []);
+
   // Auto scroll output
   useEffect(() => {
     outputEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -253,7 +273,7 @@ export default function App() {
     setSessions(prev => [newSession, ...prev]);
   };
 
-  const [selectedModel, setSelectedModel] = useState<'zsk' | 'ohmaba' | 'openai' | 'gemini' | 'qwen' | 'claude'>('zsk');
+  const [selectedModel, setSelectedModel] = useState<string>('zsk');
 
   return (
     <div className="flex flex-col h-screen w-screen bg-black text-white font-sans overflow-hidden">
