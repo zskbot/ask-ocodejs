@@ -21,7 +21,7 @@ const STARTER_PROMPTS = [
     title: 'SaaS Landing Page',
     description: 'Trang giới thiệu sản phẩm có pricing',
     icon: LayoutDashboard,
-    prompt: 'Tạo SaaS landing page responsive theo phong cách OCODE.js, gồm hero, tính năng, pricing và CTA.'
+    prompt: 'Tạo SaaS landing page responsive theo phong cách OCode.js, gồm hero, tính năng, pricing và CTA.'
   },
   {
     title: 'Analytics Dashboard',
