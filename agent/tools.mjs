@@ -22,7 +22,7 @@ export async function runTool(name, args = {}) {
     if (name === 'read_url') return await readUrl(String(args.url ?? ''));
     if (name === 'calculator') return calculator(String(args.expression ?? ''));
     return { output: `Tool không tồn tại: ${name}`, summary: 'Tool không tồn tại' };
-  } catch (error) {
+  } catch {
     return { output: 'Không thể hoàn tất công cụ được yêu cầu.', summary: 'Công cụ thất bại' };
   }
 }
