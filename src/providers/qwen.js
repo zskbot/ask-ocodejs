@@ -1,15 +1,5 @@
 let client = null;
 
-function getClient() {
-  if (client) return client;
-
-  if (!process.env.QWEN_API_KEY) {
-    throw new Error("QWEN_API_KEY not configured");
-  }
-
-  return null;
-}
-
 export async function qwenProvider(prompt) {
   try {
     const QwenCode = (await import("@qwen-code/qwen-code")).QwenCode;
