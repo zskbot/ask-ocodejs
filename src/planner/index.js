@@ -1,4 +1,4 @@
-export function createPlan(prompt){
+export function createPlan(_prompt){
 
 return[
 {
